@@ -63,6 +63,58 @@ PROGRAMS = {
     }
 }
 
+ARTICLES = {
+    "article_1": {
+        "title": "Хроническая усталость",
+        "text": (
+            "Чувствуете усталость даже после выходных? "
+            "Кофе больше не бодрит? Это сигнал, что "
+            "клеткам не хватает ресурсов.\n\n"
+            "Обычные витамины в таблетках усваиваются "
+            "лишь на 20%. Инфузионная терапия доставляет "
+            "нутриенты сразу в кровь со 100% "
+            "биодоступностью.\n\n"
+            "Программа «Витаминный заряд» — это "
+            "комплекс витаминов группы B, магния и "
+            "витамина C. Эффект чувствуется уже после "
+            "первой процедуры: ясность ума, энергия, "
+            "хороший сон."
+        ),
+        "program": "vitamin"
+    },
+    "article_2": {
+        "title": "Детокс и очищение",
+        "text": (
+            "Тяжесть в правом боку, тусклая кожа, "
+            "отеки по утрам? Печень — главный фильтр "
+            "организма — нуждается в поддержке.\n\n"
+            "Глутатион — мощнейший антиоксидант, который "
+            "вырабатывает печень. С возрастом и при "
+            "нагрузках его уровень падает.\n\n"
+            "Программа «Антиоксидант TAD 600» содержит "
+            "итальянский глутатион в терапевтической "
+            "дозировке. Результат: чистая кожа, лёгкость, "
+            "улучшение показателей печени."
+        ),
+        "program": "tad"
+    },
+    "article_3": {
+        "title": "Красота изнутри",
+        "text": (
+            "Кремы работают только на поверхности. "
+            "Настоящее сияние кожи идёт изнутри.\n\n"
+            "Лаеннек — японский препарат на основе "
+            "плаценты. Он активирует регенерацию клеток, "
+            "улучшает цвет лица, уменьшает морщины.\n\n"
+            "Программа «Золушка+» — это Лаеннек + "
+            "витамины + антиоксиданты. Эффект: "
+            "сияющая кожа, здоровый цвет лица, "
+            "замедление старения."
+        ),
+        "program": "cinderella"
+    }
+}
+
 CLINIC_INFO = (
     "Клиника Доктор Хартманн\n"
     "Адрес: Москва, СВАО, ул. Аргуновская 3к1\n"
@@ -224,24 +276,16 @@ def get_main_menu():
             callback_data="book"
         ),
         types.InlineKeyboardButton(
+            "📚 Полезные материалы",
+            callback_data="articles"
+        ),
+        types.InlineKeyboardButton(
             "🤖 Вопрос администратору",
             callback_data="ai"
         ),
         types.InlineKeyboardButton(
             "📞 Связь с админом",
             callback_data="contact"
-        )
-    )
-    return markup
-
-def get_cancel_button():
-    markup = types.InlineKeyboardMarkup(
-        row_width=2
-    )
-    markup.add(
-        types.InlineKeyboardButton(
-            "❌ Отмена",
-            callback_data="cancel"
         )
     )
     return markup
@@ -267,6 +311,120 @@ def cmd_start(message):
         message.chat.id,
         welcome,
         reply_markup=get_main_menu()
+    )
+
+@bot.callback_query_handler(
+    func=lambda call: call.data == "articles"
+)
+def show_articles(call):
+    bot.answer_callback_query(call.id)
+    text = (
+        "📚 <b>Полезные материалы</b>\n\n"
+        "Узнайте больше о наших программах:"
+    )
+    markup = types.InlineKeyboardMarkup(
+        row_width=1
+    )
+    markup.add(
+        types.InlineKeyboardButton(
+            "⚡ Хроническая усталость",
+            callback_data="article_1"
+        ),
+        types.InlineKeyboardButton(
+            "🌿 Детокс и очищение",
+            callback_data="article_2"
+        ),
+        types.InlineKeyboardButton(
+            "✨ Красота изнутри",
+            callback_data="article_3"
+        ),
+        types.InlineKeyboardButton(
+            "🏠 Главное меню",
+            callback_data="main_menu"
+        )
+    )
+    bot.send_message(
+        call.message.chat.id,
+        text,
+        reply_markup=markup
+    )
+
+@bot.callback_query_handler(
+    func=lambda call: call.data.startswith("article_")
+)
+def show_article(call):
+    article_id = call.data
+    article = ARTICLES.get(article_id)
+    if not article:
+        return
+    
+    bot.answer_callback_query(call.id)
+    
+    text = (
+        "📖 <b>" + article["title"] + "</b>\n\n" +
+        article["text"]
+    )
+    
+    markup = types.InlineKeyboardMarkup(
+        row_width=1
+    )
+    markup.add(
+        types.InlineKeyboardButton(
+            "💉 Записаться на " + article["title"],
+            callback_data="book_from_article_" + article["program"]
+        ),
+        types.InlineKeyboardButton(
+            "📚 Все статьи",
+            callback_data="articles"
+        ),
+        types.InlineKeyboardButton(
+            "🏠 Главное меню",
+            callback_data="main_menu"
+        )
+    )
+    
+    bot.send_message(
+        call.message.chat.id,
+        text,
+        reply_markup=markup
+    )
+
+@bot.callback_query_handler(
+    func=lambda call: call.data.startswith("book_from_article_")
+)
+def book_from_article(call):
+    program_id = call.data.replace("book_from_article_", "")
+    session = get_session(call.from_user.id)
+    session.last_rec = program_id
+    session.book_step = 1
+    session.book_data = {}
+    session.ai_mode = False
+    
+    bot.answer_callback_query(call.id)
+    
+    prog = PROGRAMS.get(program_id, {})
+    text = (
+        "📝 <b>Запись на процедуру</b>\n\n"
+        "Выбранная программа: <b>" +
+        prog.get("name", "") + "</b>\n\n"
+        "<b>Шаг 1 из 3:</b>\n"
+        "Как к вам обращаться?"
+    )
+    
+    markup = types.InlineKeyboardMarkup(
+        row_width=1
+    )
+    markup.add(
+        types.InlineKeyboardButton(
+            "❌ Отмена",
+            callback_data="cancel"
+        )
+    )
+    
+    bot.send_message(
+        call.message.chat.id,
+        text,
+        reply_markup=types.ReplyKeyboardRemove()
     )
 
 @bot.callback_query_handler(
@@ -354,7 +512,7 @@ def show_recommendation(cid, session):
         "🧪 <b>" + prog["name"] + "</b>\n\n"
         "💡 " + prog["reason"] + "\n"
         "⏱ Время: " + prog["time"] + "\n"
-        "📋 Подготовка: " + prog["prep"] + "\n\n"
+        " Подготовка: " + prog["prep"] + "\n\n"
         "💰 Стоимость: <b>" + str(price) +
         " руб</b>\n"
         "(скидка 5% при записи через бота)"
@@ -388,12 +546,12 @@ def ai_menu(call):
     session.ai_mode = True
     bot.answer_callback_query(call.id)
     text = (
-        " <b>Виртуальный администратор</b>\n\n"
+        "🤖 <b>Виртуальный администратор</b>\n\n"
         "Задайте любой вопрос о клинике:\n\n"
         "📍 Как добраться?\n"
         "💰 Сколько стоит процедура?\n"
         "⏰ Время работы?\n"
-        " Какие услуги есть?\n\n"
+        "🏥 Какие услуги есть?\n\n"
         "Напишите ваш вопрос ниже 👇"
     )
     markup = types.InlineKeyboardMarkup(
@@ -467,7 +625,7 @@ def cancel_action(call):
     session.ai_mode = False
     bot.answer_callback_query(call.id, "Отменено")
     text = (
-        " Действие отменено.\n\n"
+        "❌ Действие отменено.\n\n"
         "Выберите действие:"
     )
     bot.send_message(
@@ -505,7 +663,7 @@ def handle_ai_question(message):
             callback_data="ai"
         ),
         types.InlineKeyboardButton(
-            "🏠 Главное меню",
+            " Главное меню",
             callback_data="main_menu"
         )
     )
@@ -534,7 +692,7 @@ def start_booking(call):
     )
     markup.add(
         types.InlineKeyboardButton(
-            "❌ Отмена",
+            " Отмена",
             callback_data="cancel"
         )
     )
@@ -621,7 +779,7 @@ def handle_datetime(message):
     text = (
         "✅ <b>Подтвердите данные:</b>\n\n"
         "👤 Имя: " + session.book_data["name"] + "\n"
-        " Телефон: " + session.book_data["phone"] + "\n"
+        "📞 Телефон: " + session.book_data["phone"] + "\n"
         "📅 Время: " + session.book_data["time"] + "\n"
         "💉 Программа: " + prog.get("name", "не указана") + "\n"
         "💰 Цена: " + str(price) + " руб\n\n"
@@ -659,8 +817,8 @@ def confirm_booking(call):
         prog = PROGRAMS.get(session.last_rec, {})
         price = int(prog.get("price", 0) * 0.95)
         report = (
-            " НОВАЯ ЗАЯВКА\n\n"
-            "👤 Имя: " +
+            "🔔 НОВАЯ ЗАЯВКА\n\n"
+            " Имя: " +
             session.book_data["name"] + "\n"
             "📞 Телефон: " +
             session.book_data["phone"] + "\n"
@@ -676,26 +834,40 @@ def confirm_booking(call):
         )
         bot.send_message(admin_id, report)
     
+    prog = PROGRAMS.get(session.last_rec, {})
+    
     text = (
         "✅ <b>Заявка принята!</b>\n\n"
         "Администратор свяжется с вами "
-        "в течение 15 минут для подтверждения."
+        "в течение 15 минут для подтверждения.\n\n"
+        "📋 <b>Памятка перед визитом:</b>\n"
+        "1. Выпейте стакан воды за час до визита\n"
+        "2. Возьмите тёплые носки (при капельницах "
+        "часто мерзнут ноги)\n"
+        "3. Подготовка: " + prog.get("prep", "не требуется") + "\n\n"
+        "📍 <b>Наш адрес:</b>\n"
+        "Москва, ул. Аргуновская 3к1\n"
+        "Метро: ВДНХ, Алексеевская\n\n"
+        "🗺 <a href='https://yandex.ru/maps/?text=Москва, ул. Аргуновская 3к1'>Открыть на Яндекс.Картах</a>"
     )
+    
     markup = types.InlineKeyboardMarkup(
         row_width=1
     )
     markup.add(
         types.InlineKeyboardButton(
-            "🏠 Главное меню",
+            " Главное меню",
             callback_data="main_menu"
         )
     )
+    
     bot.send_message(
         call.message.chat.id,
         text,
-        reply_markup=markup
+        reply_markup=markup,
+        disable_web_page_preview=False
     )
 
 if __name__ == "__main__":
-    logger.info("Bot started with cancel buttons and confirmation")
+    logger.info("Bot started with articles and memo")
     bot.infinity_polling(skip_pending=True)
