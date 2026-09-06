@@ -316,7 +316,7 @@ def get_main_menu():
             callback_data="book"
         ),
         types.InlineKeyboardButton(
-            " Полезные материалы",
+            "📚 Полезные материалы",
             callback_data="articles"
         ),
         types.InlineKeyboardButton(
@@ -324,12 +324,8 @@ def get_main_menu():
             callback_data="ai"
         ),
         types.InlineKeyboardButton(
-            " Связь с админом",
+            "📞 Связь с админом",
             callback_data="contact"
-        ),
-        types.InlineKeyboardButton(
-            "📱 Позвонить в клинику",
-            url="tel:" + CLINIC_PHONE
         )
     )
     return markup
@@ -360,7 +356,7 @@ def cmd_start(message):
 def show_articles(call):
     bot.answer_callback_query(call.id)
     text = (
-        " <b>Полезные материалы</b>\n\n"
+        "📚 <b>Полезные материалы</b>\n\n"
         "Узнайте больше о программах:"
     )
     markup = types.InlineKeyboardMarkup(
@@ -415,7 +411,7 @@ def show_article(call):
             )
         ),
         types.InlineKeyboardButton(
-            " Все статьи",
+            "📚 Все статьи",
             callback_data="articles"
         ),
         types.InlineKeyboardButton(
@@ -551,7 +547,7 @@ def show_recommendation(cid, session):
         "✨ Рекомендация:\n\n"
         "🧪 <b>" + prog["name"] + "</b>\n\n"
         "💡 " + prog["reason"] + "\n"
-        " Время: " + prog["time"] + "\n"
+        "⏱ Время: " + prog["time"] + "\n"
         "📋 Подготовка: " + prog["prep"] + "\n\n"
         "💰 Стоимость: <b>" + str(price) +
         " руб</b>\n"
@@ -613,18 +609,15 @@ def ai_menu(call):
 def contact_admin(call):
     bot.answer_callback_query(call.id)
     text = (
-        " <b>Связь с администратором</b>\n\n"
+        "📞 <b>Связь с администратором</b>\n\n"
         "Telegram: @silentaltai\n\n"
-        "Телефон: " + CLINIC_PHONE
+        f"Телефон: <a href='tel:{CLINIC_PHONE}'>{CLINIC_PHONE}</a>\n"
+        "<i>(Нажмите на номер выше, чтобы позвонить)</i>"
     )
     markup = types.InlineKeyboardMarkup(
         row_width=1
     )
     markup.add(
-        types.InlineKeyboardButton(
-            " Позвонить",
-            url="tel:" + CLINIC_PHONE
-        ),
         types.InlineKeyboardButton(
             "🏠 Главное меню",
             callback_data="main_menu"
@@ -958,9 +951,9 @@ def confirm_booking(call):
     if admin_id:
         report = (
             "🔔 НОВАЯ ЗАЯВКА\n\n"
-            " Имя: " +
+            "👤 Имя: " +
             session.book_data["name"] + "\n"
-            " Телефон: " +
+            "📞 Телефон: " +
             session.book_data["phone"] + "\n"
             "⏰ Время: " +
             session.book_data.get(
@@ -992,7 +985,7 @@ def confirm_booking(call):
         "Москва, ул. Аргуновская 3к1\n"
         "Метро: ВДНХ, Алексеевская\n\n"
         "🗺 <a href='https://yandex.ru/maps/?text=Москва, ул. Аргуновская 3к1'>Открыть на Яндекс.Картах</a>\n\n"
-        "📞 <a href='tel:" + CLINIC_PHONE + "'>Позвонить: " + CLINIC_PHONE + "</a>"
+        f"📞 <a href='tel:{CLINIC_PHONE}'>Позвонить: {CLINIC_PHONE}</a>"
     )
     
     markup = types.InlineKeyboardMarkup(
@@ -1000,7 +993,7 @@ def confirm_booking(call):
     )
     markup.add(
         types.InlineKeyboardButton(
-            " Главное меню",
+            "🏠 Главное меню",
             callback_data="main_menu"
         )
     )
