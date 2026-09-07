@@ -4,6 +4,7 @@ import re
 import threading
 import requests
 import json
+from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
@@ -121,6 +122,43 @@ def validate_phone(phone):
         return "+7" + digits
     return None
 
+def get_available_dates():
+    """Генерирует список дат на 7 дней вперёд"""
+    dates = []
+    today = datetime.now()
+    day_names = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
+    short_names = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+    
+    for i in range(7):
+        date = today + timedelta(days=i)
+        day_name = day_names[date.weekday()]
+        short_name = short_names[date.weekday()]
+        date_str = date.strftime("%d.%m")
+        
+        if i == 0:
+            label = f"Сегодня, {date_str}"
+        elif i == 1:
+            label = f"Завтра, {date_str}"
+        else:
+            label = f"{day_name}, {date_str}"
+        
+        dates.append({
+            "label": label,
+            "value": f"{short_name}, {date_str}",
+            "callback": f"date_{date.strftime('%Y-%m-%d')}"
+        })
+    
+    return dates
+
+def get_time_slots():
+    """Возвращает сетку часов 09:00-21:00"""
+    return [
+        ["09:00", "10:00", "11:00", "12:00"],
+        ["13:00", "14:00", "15:00", "16:00"],
+        ["17:00", "18:00", "19:00", "20:00"],
+        ["21:00"]
+    ]
+
 @dataclass
 class Session:
     quiz_step: Optional[str] = None
@@ -164,14 +202,6 @@ QUIZ_OPTIONS = {
     ]
 }
 
-# ЧАСЫ РАБОТЫ (разбиты на строки по 4 кнопки)
-HOURS = [
-    ["09:00", "10:00", "11:00", "12:00"],
-    ["13:00", "14:00", "15:00", "16:00"],
-    ["17:00", "18:00", "19:00", "20:00"],
-    ["21:00"]
-]
-
 def get_recommendation(session):
     goal = session.answers.get("goal")
     exp = session.answers.get("experience")
@@ -188,11 +218,11 @@ def get_recommendation(session):
 def get_main_menu():
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
-        types.InlineKeyboardButton("💉 Подобрать капельницу", callback_data="quiz"),
+        types.InlineKeyboardButton(" Подобрать капельницу", callback_data="quiz"),
         types.InlineKeyboardButton("📝 Записаться", callback_data="book"),
         types.InlineKeyboardButton("📚 Полезные материалы", callback_data="articles"),
         types.InlineKeyboardButton("🤖 Вопрос администратору", callback_data="ai"),
-        types.InlineKeyboardButton("📞 Связь с админом", callback_data="contact")
+        types.InlineKeyboardButton(" Связь с админом", callback_data="contact")
     )
     return markup
 
@@ -234,8 +264,8 @@ def show_article(call):
     bot.answer_callback_query(call.id)
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
-        types.InlineKeyboardButton(" Записаться", callback_data="book_from_article_" + article["program"]),
-        types.InlineKeyboardButton("📚 Все статьи", callback_data="articles"),
+        types.InlineKeyboardButton("💉 Записаться", callback_data="book_from_article_" + article["program"]),
+        types.InlineKeyboardButton(" Все статьи", callback_data="articles"),
         types.InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")
     )
     bot.send_message(
@@ -255,10 +285,10 @@ def book_from_article(call):
     bot.answer_callback_query(call.id)
     prog = PROGRAMS.get(program_id, {})
     markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(types.InlineKeyboardButton("❌ Отмена", callback_data="cancel"))
+    markup.add(types.InlineKeyboardButton(" Отмена", callback_data="cancel"))
     bot.send_message(
         call.message.chat.id,
-        f"📝 <b>Запись</b>\n\nПрограмма: <b>{prog.get('name', '')}</b>\n\n<b>Шаг 1 из 4:</b>\nКак к вам обращаться?",
+        f"📝 <b>Запись</b>\n\nПрограмма: <b>{prog.get('name', '')}</b>\n\n<b>Шаг 1 из 5:</b>\nКак к вам обращаться?",
         reply_markup=markup
     )
 
@@ -307,13 +337,13 @@ def show_recommendation(cid, session):
     price = int(prog["price"] * 0.95)
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
-        types.InlineKeyboardButton("📝 Записаться", callback_data="book"),
+        types.InlineKeyboardButton(" Записаться", callback_data="book"),
         types.InlineKeyboardButton("🔄 Другую программу", callback_data="quiz"),
         types.InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")
     )
     bot.send_message(
         cid,
-        f"✨ Рекомендация:\n\n🧪 <b>{prog['name']}</b>\n\n {prog['reason']}\n⏱ Время: {prog['time']}\n📋 Подготовка: {prog['prep']}\n\n💰 Стоимость: <b>{price} руб</b>\n(скидка 5% через бота)",
+        f"✨ Рекомендация:\n\n🧪 <b>{prog['name']}</b>\n\n💡 {prog['reason']}\n⏱ Время: {prog['time']}\n📋 Подготовка: {prog['prep']}\n\n💰 Стоимость: <b>{price} руб</b>\n(скидка 5% через бота)",
         reply_markup=markup
     )
 
@@ -323,10 +353,10 @@ def ai_menu(call):
     session.ai_mode = True
     bot.answer_callback_query(call.id)
     markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(types.InlineKeyboardButton("❌ Отмена", callback_data="cancel"))
+    markup.add(types.InlineKeyboardButton(" Отмена", callback_data="cancel"))
     bot.send_message(
         call.message.chat.id,
-        "🤖 <b>Виртуальный администратор</b>\n\nЗадайте вопрос:\n Как добраться?\n💰 Цены?\n Время работы?\n\nНапишите вопрос ниже ",
+        "🤖 <b>Виртуальный администратор</b>\n\nЗадайте вопрос:\n📍 Как добраться?\n💰 Цены?\n⏰ Время работы?\n\nНапишите вопрос ниже 👇",
         reply_markup=markup
     )
 
@@ -337,7 +367,7 @@ def contact_admin(call):
     markup.add(types.InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu"))
     bot.send_message(
         call.message.chat.id,
-        f" <b>Связь с администратором</b>\n\nTelegram: @silentaltai\n\nТелефон: <a href='tel:{CLINIC_PHONE}'>{CLINIC_PHONE}</a>\n<i>(Нажмите на номер выше, чтобы позвонить)</i>",
+        f"📞 <b>Связь с администратором</b>\n\nTelegram: @silentaltai\n\nТелефон: <a href='tel:{CLINIC_PHONE}'>{CLINIC_PHONE}</a>\n<i>(Нажмите на номер выше, чтобы позвонить)</i>",
         reply_markup=markup
     )
 
@@ -347,6 +377,7 @@ def show_main_menu(call):
     session.ai_mode = False
     session.quiz_step = None
     session.book_step = 0
+    session.book_data = {}
     bot.answer_callback_query(call.id)
     bot.send_message(
         call.message.chat.id,
@@ -400,7 +431,7 @@ def start_booking(call):
     markup.add(types.InlineKeyboardButton("❌ Отмена", callback_data="cancel"))
     bot.send_message(
         call.message.chat.id,
-        "📝 <b>Запись на процедуру</b>\n\n<b>Шаг 1 из 4:</b>\nКак к вам обращаться?",
+        "📝 <b>Запись на процедуру</b>\n\n<b>Шаг 1 из 5:</b>\nКак к вам обращаться?",
         reply_markup=markup
     )
 
@@ -413,7 +444,7 @@ def handle_name(message):
     markup.add(types.KeyboardButton("📱 Поделиться контактом", request_contact=True))
     bot.send_message(
         message.chat.id,
-        f"Приятно познакомиться, {session.book_data['name']}!\n\n<b>Шаг 2 из 4:</b>\nВаш номер телефона:",
+        f"Приятно познакомиться, {session.book_data['name']}!\n\n<b>Шаг 2 из 5:</b>\nВаш номер телефона:",
         reply_markup=markup
     )
 
@@ -429,7 +460,7 @@ def handle_phone(message):
     elif message.text:
         phone = message.text.strip()
     else:
-        bot.send_message(message.chat.id, " Отправьте номер телефона")
+        bot.send_message(message.chat.id, "❌ Отправьте номер телефона")
         return
     
     validated = validate_phone(phone)
@@ -442,33 +473,53 @@ def handle_phone(message):
     
     session.book_data["phone"] = validated
     session.book_step = 3
+    
+    # Показываем кнопки с датами
+    dates = get_available_dates()
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    for date_info in dates:
+        markup.add(types.InlineKeyboardButton(date_info["label"], callback_data=date_info["callback"]))
+    markup.add(types.InlineKeyboardButton("❌ Отмена", callback_data="cancel"))
+    
     bot.send_message(
         message.chat.id,
-        "<b>Шаг 3 из 4:</b>\nНапишите удобную дату (например: Завтра, 15.09, Понедельник)",
-        reply_markup=types.ReplyKeyboardRemove()
+        "<b>Шаг 3 из 5:</b>\nВыберите удобную дату:",
+        reply_markup=markup
     )
 
-# === ЗАПИСЬ: ШАГ 3 (Дата) ===
-@bot.message_handler(func=lambda msg: get_session(msg.from_user.id).book_step == 3)
-def handle_date(message):
-    session = get_session(message.from_user.id)
-    session.book_data["date"] = message.text.strip()
-    session.book_step = 4
+# === ЗАПИСЬ: ШАГ 3 (Выбор даты) ===
+@bot.callback_query_handler(func=lambda call: call.data.startswith("date_"))
+def handle_date_selection(call):
+    date_val = call.data.replace("date_", "")
+    session = get_session(call.from_user.id)
     
-    # Создаем сетку кнопок времени (по 4 в строке)
+    # Форматируем дату для отображения
+    try:
+        date_obj = datetime.strptime(date_val, "%Y-%m-%d")
+        day_names = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+        formatted = f"{day_names[date_obj.weekday()]}, {date_obj.strftime('%d.%m')}"
+    except:
+        formatted = date_val
+    
+    session.book_data["date"] = formatted
+    session.book_step = 4
+    bot.answer_callback_query(call.id)
+    
+    # Показываем кнопки с часами
+    time_slots = get_time_slots()
     markup = types.InlineKeyboardMarkup(row_width=4)
-    for row in HOURS:
+    for row in time_slots:
         buttons = [types.InlineKeyboardButton(t, callback_data=f"time_{t}") for t in row]
         markup.add(*buttons)
     markup.add(types.InlineKeyboardButton("❌ Отмена", callback_data="cancel"))
     
     bot.send_message(
-        message.chat.id,
-        "<b>Шаг 4 из 4:</b>\nВыберите точное время:",
+        call.message.chat.id,
+        f"✅ Выбрана дата: <b>{formatted}</b>\n\n<b>Шаг 4 из 5:</b>\nВыберите точное время:",
         reply_markup=markup
     )
 
-# === ЗАПИСЬ: ШАГ 4 (Время) ===
+# === ЗАПИСЬ: ШАГ 4 (Выбор времени) ===
 @bot.callback_query_handler(func=lambda call: call.data.startswith("time_"))
 def handle_time_selection(call):
     time_val = call.data.replace("time_", "")
@@ -485,11 +536,11 @@ def show_confirmation(cid, session):
     text = (
         "✅ <b>Подтвердите данные:</b>\n\n"
         f"👤 Имя: {session.book_data.get('name', '')}\n"
-        f" Телефон: {session.book_data.get('phone', '')}\n"
+        f"📞 Телефон: {session.book_data.get('phone', '')}\n"
         f"📅 Дата: {session.book_data.get('date', '')}\n"
         f"⏰ Время: {session.book_data.get('time', '')}\n"
         f"💉 Программа: {prog.get('name', 'не указана')}\n"
-        f" Цена: {price} руб\n\nВсё верно?"
+        f"💰 Цена: {price} руб\n\nВсё верно?"
     )
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -519,15 +570,15 @@ def confirm_booking(call):
     
     if admin_id:
         report = (
-            f" НОВАЯ ЗАЯВКА\n\n"
-            f"👤 Имя: {session.book_data.get('name', '')}\n"
+            f"🔔 НОВАЯ ЗАЯВКА\n\n"
+            f" Имя: {session.book_data.get('name', '')}\n"
             f"📞 Телефон: {session.book_data.get('phone', '')}\n"
-            f" Дата: {session.book_data.get('date', '')}\n"
+            f"📅 Дата: {session.book_data.get('date', '')}\n"
             f"⏰ Время: {session.book_data.get('time', '')}\n\n"
             f"💉 Программа: {prog.get('name', 'не указана')}\n"
             f"💰 Цена: {price} руб\n\n"
             f"🎯 Цель: {session.answers.get('goal', '?')}\n"
-            f"📊 Опыт: {session.answers.get('experience', '?')}"
+            f" Опыт: {session.answers.get('experience', '?')}"
         )
         if saved:
             report += "\n\n✅ Сохранено в Google Sheets"
@@ -536,11 +587,11 @@ def confirm_booking(call):
     text = (
         "✅ <b>Заявка принята!</b>\n\n"
         "Администратор свяжется с вами в течение 15 минут.\n\n"
-        "📋 <b>Памятка перед визитом:</b>\n"
+        " <b>Памятка перед визитом:</b>\n"
         "1. Выпейте стакан воды за час до визита\n"
         "2. Возьмите тёплые носки\n"
         f"3. {prog.get('prep', 'Специальной подготовки не требуется')}\n\n"
-        " <b>Адрес:</b>\nМосква, ул. Аргуновская 3к1 (м. ВДНХ, Алексеевская)\n\n"
+        "📍 <b>Адрес:</b>\nМосква, ул. Аргуновская 3к1 (м. ВДНХ, Алексеевская)\n\n"
         f"🗺 <a href='https://yandex.ru/maps/?text=Москва, ул. Аргуновская 3к1'>Открыть на Яндекс.Картах</a>\n\n"
         f"📞 <a href='tel:{CLINIC_PHONE}'>Позвонить: {CLINIC_PHONE}</a>"
     )
@@ -554,5 +605,5 @@ def confirm_booking(call):
     )
 
 if __name__ == "__main__":
-    logger.info("Bot v2.1 started (Hourly booking)")
+    logger.info("Bot v2.2 started (Full booking flow)")
     bot.infinity_polling(skip_pending=True)
